@@ -12,17 +12,15 @@ async function index() {
 
   for (let i = 0; i < feedItems.length; i++) {
     const item = feedItems[i];
-
     const existingEntries = existingPages.find(
       (page) => page.properties.Link.url === item.link
     );
 
     const isNewEntry = existingEntries === undefined;
-
     const notionItem = {
       title: item.title,
       link: item.link,
-      content: htmlToNotionBlocks(item.content),
+      content: htmlToNotionBlocks(item['content:encoded'] || item.content),
       feed: item.feed,
       pubDate: item.pubDate,
       creator: item['dc:creator'],

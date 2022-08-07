@@ -67,7 +67,6 @@ export async function getFeedUrlsFromNotion() {
 
 export async function addFeedItemToNotion(notionItem) {
   const { title, link, content, feed, pubDate, creator } = notionItem;
-
   const notion = new Client({
     auth: NOTION_API_TOKEN,
     logLevel,
@@ -112,11 +111,6 @@ export async function addFeedItemToNotion(notionItem) {
     Link: {
       url: link,
     },
-    Tags: {
-      multi_select: feed.page.properties.Tags.multi_select.map((item) => ({
-        name: item.name,
-      })),
-    },
     Feed: {
       relation: [
         {
@@ -125,14 +119,17 @@ export async function addFeedItemToNotion(notionItem) {
       ],
     },
   };
-
-  await notion.pages.create({
-    parent: {
-      database_id: NOTION_READER_DATABASE_ID,
-    },
-    properties: { ...propertiesData, ...publishedData, ...creatorData },
-    children: content,
-  });
+  try {
+    await notion.pages.create({
+      parent: {
+        database_id: NOTION_READER_DATABASE_ID,
+      },
+      properties: { ...propertiesData, ...publishedData, ...creatorData },
+      children: content,
+    });
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 export async function deleteOldUnreadFeedItemsFromNotion() {

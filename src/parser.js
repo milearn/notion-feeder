@@ -22,7 +22,7 @@ export default function htmlToNotionBlocks(htmlContent) {
   const notionBlocks = jsonToNotionBlocks(markdownContent);
   const notionBlocksWithImages = notionBlocks.map((block) => {
     if (block.type === 'paragraph') {
-      if (imageUrlRegex.test(block.paragraph.text[0].text.content)) {
+      if (imageUrlRegex.test(block.paragraph.text[0]?.text.content)) {
         return {
           type: 'image',
           image: {
