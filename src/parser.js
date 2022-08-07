@@ -16,6 +16,25 @@ function jsonToNotionBlocks(markdownContent) {
 }
 
 export default function htmlToNotionBlocks(htmlContent) {
-  const markdownJson = htmlToMarkdownJSON(htmlContent);
-  return jsonToNotionBlocks(markdownJson);
+  const imageUrlRegex = /(http(s?):).*\.(?:jpg|jpeg|webp|gif|png)/gi;
+
+  const markdownContent = htmlToMarkdownJSON(htmlContent);
+  const notionBlocks = jsonToNotionBlocks(markdownContent);
+  const notionBlocksWithImages = notionBlocks.map((block) => {
+    if (block.type === 'paragraph') {
+      if (imageUrlRegex.test(block.paragraph.text[0].text.content)) {
+        return {
+          type: 'image',
+          image: {
+            type: 'external',
+            external: {
+              url: block.paragraph.text[0].text.content,
+            },
+          },
+        };
+      }
+    }
+    return block;
+  });
+  return notionBlocksWithImages;
 }

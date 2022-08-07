@@ -12,6 +12,24 @@ const {
 
 const logLevel = CI ? LogLevel.INFO : LogLevel.DEBUG;
 
+export async function getExistingPages(items) {
+  const notion = new Client({
+    auth: NOTION_API_TOKEN,
+    logLevel,
+  });
+  const response = await notion.databases.query({
+    database_id: NOTION_READER_DATABASE_ID,
+    or: items.map((item) => ({
+      property: 'Link',
+      text: {
+        equals: item.link,
+      },
+    })),
+  });
+
+  return response.results;
+}
+
 export async function getFeedUrlsFromNotion() {
   const notion = new Client({
     auth: NOTION_API_TOKEN,
@@ -41,43 +59,80 @@ export async function getFeedUrlsFromNotion() {
   const feeds = response.results.map((item) => ({
     title: item.properties.Title.title[0].plain_text,
     feedUrl: item.properties.Link.url,
+    page: item,
   }));
 
   return feeds;
 }
 
 export async function addFeedItemToNotion(notionItem) {
-  const { title, link, content } = notionItem;
+  const { title, link, content, feed, pubDate, creator } = notionItem;
 
   const notion = new Client({
     auth: NOTION_API_TOKEN,
     logLevel,
   });
 
-  try {
-    await notion.pages.create({
-      parent: {
-        database_id: NOTION_READER_DATABASE_ID,
-      },
-      properties: {
-        Title: {
-          title: [
-            {
-              text: {
-                content: title,
-              },
-            },
-          ],
-        },
-        Link: {
-          url: link,
+  let publishedData = {};
+  if (pubDate !== undefined) {
+    publishedData = {
+      Published: {
+        date: {
+          start: new Date(pubDate).toISOString(),
         },
       },
-      children: content,
-    });
-  } catch (err) {
-    console.error(err);
+    };
   }
+
+  let creatorData = {};
+  if (creator !== undefined) {
+    creatorData = {
+      Creator: {
+        rich_text: [
+          {
+            text: {
+              content: creator,
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  const propertiesData = {
+    Title: {
+      title: [
+        {
+          text: {
+            content: title,
+          },
+        },
+      ],
+    },
+    Link: {
+      url: link,
+    },
+    Tags: {
+      multi_select: feed.page.properties.Tags.multi_select.map((item) => ({
+        name: item.name,
+      })),
+    },
+    Feed: {
+      relation: [
+        {
+          id: feed.page.id,
+        },
+      ],
+    },
+  };
+
+  await notion.pages.create({
+    parent: {
+      database_id: NOTION_READER_DATABASE_ID,
+    },
+    properties: { ...propertiesData, ...publishedData, ...creatorData },
+    children: content,
+  });
 }
 
 export async function deleteOldUnreadFeedItemsFromNotion() {
